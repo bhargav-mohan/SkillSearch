@@ -18,13 +18,15 @@ export default class ErrorBoundary extends Component {
     if (this.state.hasError) {
       return (
         <div className="error-boundary">
-          <h2>Something went wrong</h2>
+          <p className="error-kicker">Sorry about this</p>
+          <h2>The page hit a snag</h2>
           <p>{this.state.message}</p>
           <button
+            type="button"
             className="btn-primary"
             onClick={() => this.setState({ hasError: false, message: '' })}
           >
-            Reload
+            Try again
           </button>
         </div>
       );

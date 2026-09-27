@@ -3,35 +3,54 @@ import SkillList from './SkillList.jsx';
 import SkillPreview from './SkillPreview.jsx';
 import DownloadButtons from './DownloadButtons.jsx';
 
-export default function Results({ skills, onReset }) {
+export default function Results({ skills, heard, description, onEdit }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const selectedSkill = skills[selectedIndex] || null;
   const listRef = useRef(null);
 
-  // Scroll selected item into view
   useEffect(() => {
     if (!listRef.current) return;
     const active = listRef.current.querySelector('.skill-item--active');
     if (active) active.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
 
-  const generatedCount = skills.filter((s) => s.type === 'generated').length;
+  const writtenCount = skills.filter((s) => s.type === 'generated').length;
   const existingCount = skills.filter((s) => s.type === 'existing').length;
 
   return (
     <div className="results">
-      <div className="results-toolbar">
-        <span className="results-count">
+      <section className="results-intro">
+        <p className="results-kicker">Here’s what we heard</p>
+        <h2 className="results-heard">
+          {heard || 'We put together the skills this project needs.'}
+        </h2>
+        {description && (
+          <blockquote className="results-quote">
+            {description}
+          </blockquote>
+        )}
+        <p className="results-count">
           {skills.length} skill{skills.length !== 1 ? 's' : ''}
-          {' — '}
-          <span className="results-count-generated">{generatedCount} generated</span>
-          {existingCount > 0 && (
-            <>, <span className="results-count-existing">{existingCount} existing</span></>
+          {writtenCount > 0 && (
+            <> — <span className="results-count-generated">{writtenCount} written for you</span></>
           )}
-        </span>
+          {existingCount > 0 && (
+            <>{writtenCount > 0 ? ', ' : ' — '}<span className="results-count-existing">{existingCount} already out there</span></>
+          )}
+        </p>
+        <p className="results-howto">
+          Written skills are <code>.md</code> files you can download, copy, or take as a zip
+          (a JSON copy is in there too). Put them where your agent can see them.
+          Guides are links we found so we didn’t rewrite them.
+        </p>
+      </section>
+
+      <div className="results-toolbar">
+        <DownloadButtons skills={skills} selectedSkill={selectedSkill} />
         <div className="results-actions">
-          <DownloadButtons skills={skills} selectedSkill={selectedSkill} />
-          <button className="btn-text" onClick={onReset}>← Start Over</button>
+          <button type="button" className="btn-text" onClick={onEdit}>
+            Change what you wrote
+          </button>
         </div>
       </div>
 

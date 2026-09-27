@@ -3,7 +3,6 @@ import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import hljs from 'highlight.js/lib/core';
 
-// Register only the languages likely to appear in generated skill files
 import javascript from 'highlight.js/lib/languages/javascript';
 import typescript from 'highlight.js/lib/languages/typescript';
 import python from 'highlight.js/lib/languages/python';
@@ -13,7 +12,7 @@ import json from 'highlight.js/lib/languages/json';
 import yaml from 'highlight.js/lib/languages/yaml';
 import dockerfile from 'highlight.js/lib/languages/dockerfile';
 import css from 'highlight.js/lib/languages/css';
-import xml from 'highlight.js/lib/languages/xml'; // covers HTML
+import xml from 'highlight.js/lib/languages/xml';
 
 hljs.registerLanguage('javascript', javascript);
 hljs.registerLanguage('js', javascript);
@@ -31,7 +30,6 @@ hljs.registerLanguage('css', css);
 hljs.registerLanguage('html', xml);
 hljs.registerLanguage('xml', xml);
 
-// Configure marked with a custom renderer that syntax-highlights code blocks
 const renderer = new marked.Renderer();
 renderer.code = ({ text, lang }) => {
   const language = lang && hljs.getLanguage(lang) ? lang : 'plaintext';
@@ -43,7 +41,6 @@ renderer.code = ({ text, lang }) => {
 
 marked.setOptions({ breaks: true, renderer });
 
-// Validate that a URL is safe to link to
 function isSafeUrl(url) {
   try {
     const { protocol } = new URL(url);
@@ -53,14 +50,12 @@ function isSafeUrl(url) {
   }
 }
 
-function CopyButton({ text }) {
+function CopyButton({ text, label = 'Copy' }) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
       const ta = document.createElement('textarea');
       ta.value = text;
@@ -68,14 +63,14 @@ function CopyButton({ text }) {
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   return (
-    <button className="btn-copy" onClick={handleCopy} title="Copy to clipboard">
-      {copied ? '✓ Copied' : 'Copy'}
+    <button type="button" className="btn-copy" onClick={handleCopy}>
+      {copied ? 'Copied' : label}
     </button>
   );
 }
@@ -86,7 +81,6 @@ export default function SkillPreview({ skill }) {
   useEffect(() => {
     if (skill?.type === 'generated' && skill.content) {
       const raw = marked.parse(skill.content);
-      // Sanitise against XSS — allow only safe HTML, strip scripts/event handlers
       const clean = DOMPurify.sanitize(raw, {
         USE_PROFILES: { html: true },
         FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed'],
@@ -101,7 +95,7 @@ export default function SkillPreview({ skill }) {
   if (!skill) {
     return (
       <div className="skill-preview skill-preview--empty">
-        <p>Select a skill from the list to preview its contents.</p>
+        <p>Pick a skill on the left and we’ll show it here.</p>
       </div>
     );
   }
@@ -112,12 +106,15 @@ export default function SkillPreview({ skill }) {
       <div className="skill-preview">
         <div className="skill-preview-header">
           <h2 className="skill-preview-title">{skill.name}</h2>
-          <span className="skill-badge skill-badge--existing">Existing</span>
+          <span className="skill-badge skill-badge--existing">Guide</span>
         </div>
         <div className="skill-preview-existing">
+          <p className="skill-preview-note">
+            This one already exists, so we pointed you to it instead of writing a new file.
+          </p>
           <p className="skill-preview-description">{skill.description}</p>
           <div className="skill-preview-link-row">
-            <span className="skill-preview-link-label">Resource:</span>
+            <span className="skill-preview-link-label">Open it</span>
             {safe ? (
               <a
                 href={skill.url}
@@ -128,7 +125,7 @@ export default function SkillPreview({ skill }) {
                 {skill.url}
               </a>
             ) : (
-              <span className="skill-preview-link skill-preview-link--unsafe" title="URL not linked — unsafe protocol">
+              <span className="skill-preview-link skill-preview-link--unsafe" title="This link doesn’t look safe, so we didn’t make it clickable">
                 {skill.url}
               </span>
             )}
@@ -138,15 +135,14 @@ export default function SkillPreview({ skill }) {
     );
   }
 
-  // generated
   return (
     <div className="skill-preview">
       <div className="skill-preview-header">
         <h2 className="skill-preview-title">{skill.name}</h2>
         <div className="skill-preview-header-meta">
           <code className="skill-preview-filename">{skill.filename}</code>
-          <span className="skill-badge skill-badge--generated">Generated</span>
-          <CopyButton text={skill.content} />
+          <span className="skill-badge skill-badge--generated">File</span>
+          <CopyButton text={skill.content} label="Copy markdown" />
         </div>
       </div>
       <div

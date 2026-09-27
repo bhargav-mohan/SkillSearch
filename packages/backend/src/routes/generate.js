@@ -9,17 +9,10 @@ function safeFilename(name) {
   return name.replace(/[^a-z0-9._-]/gi, '-').replace(/\.{2,}/g, '-');
 }
 
-// Parse and validate the raw LLM JSON text
-function parseSkills(rawText) {
-  const cleaned = rawText
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/, '')
-    .trim();
-
-  const skills = JSON.parse(cleaned);
-  if (!Array.isArray(skills)) throw new Error('Response is not a JSON array');
+function validateSkills(skills) {
+  if (!Array.isArray(skills)) throw new Error('Response is not a skill list');
   if (skills.length === 0) throw new Error('No skills were returned. Try a more detailed project description.');
-  if (skills.length > 15) skills.splice(15); // cap at 15
+  if (skills.length > 15) skills.splice(15);
 
   for (const s of skills) {
     if (!s.name) throw new Error('Each skill must have a name field');
@@ -31,7 +24,6 @@ function parseSkills(rawText) {
       if (!s.filename || !s.content) {
         throw new Error(`Generated skill "${s.name}" must have filename and content fields`);
       }
-      // Sanitise filename to prevent path traversal in ZIP
       s.filename = safeFilename(s.filename);
     } else {
       throw new Error(`Skill "${s.name}" has unknown type "${s.type}". Expected "existing" or "generated".`);
@@ -39,6 +31,27 @@ function parseSkills(rawText) {
   }
 
   return skills;
+}
+
+// Accepts either { heard, skills } or a raw skills array (older model replies)
+function parsePayload(rawText) {
+  const cleaned = rawText
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
+
+  const parsed = JSON.parse(cleaned);
+
+  if (Array.isArray(parsed)) {
+    return { heard: '', skills: validateSkills(parsed) };
+  }
+
+  if (parsed && Array.isArray(parsed.skills)) {
+    const heard = typeof parsed.heard === 'string' ? parsed.heard.trim().slice(0, 500) : '';
+    return { heard, skills: validateSkills(parsed.skills) };
+  }
+
+  throw new Error('Response is not a skill list');
 }
 
 // SSE helper — writes a single SSE event line
@@ -121,9 +134,9 @@ router.post('/generate', async (req, res) => {
 
   clearTimeout(timeout);
 
-  let skills;
+  let payload;
   try {
-    skills = parseSkills(rawText);
+    payload = parsePayload(rawText);
   } catch (err) {
     console.error('Failed to parse LLM response:', err.message);
     sendEvent(res, { type: 'error', error: `Failed to parse skill data: ${err.message}` });
@@ -131,7 +144,7 @@ router.post('/generate', async (req, res) => {
     return;
   }
 
-  sendEvent(res, { type: 'skills', skills });
+  sendEvent(res, { type: 'skills', skills: payload.skills, heard: payload.heard });
   res.write('data: [DONE]\n\n');
   res.end();
 });

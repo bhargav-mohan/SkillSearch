@@ -6,11 +6,10 @@
  * @param {string} [params.apiKey]
  * @param {string} [params.baseURL]
  * @param {string} [params.model]
- * @param {(chunk: string) => void} params.onChunk  - called with each raw text delta
  * @param {AbortSignal} params.signal
- * @returns {Promise<Array>} Resolves with the skills array when complete
+ * @returns {Promise<{skills: Array, heard: string}>}
  */
-export async function generateSkills({ description, apiKey, baseURL, model, onChunk, signal }) {
+export async function generateSkills({ description, apiKey, baseURL, model, signal }) {
   const body = { description };
   if (apiKey) body.apiKey = apiKey;
   if (baseURL) body.baseURL = baseURL;
@@ -40,7 +39,7 @@ export async function generateSkills({ description, apiKey, baseURL, model, onCh
   const decoder = new TextDecoder();
   let buffer = '';
 
-  let skills = null;
+  let result = null;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -55,7 +54,7 @@ export async function generateSkills({ description, apiKey, baseURL, model, onCh
     for (const line of lines) {
       if (!line.startsWith('data: ')) continue;
       const payload = line.slice(6).trim();
-      if (payload === '[DONE]') return skills;
+      if (payload === '[DONE]') return result;
 
       let event;
       try {
@@ -67,16 +66,13 @@ export async function generateSkills({ description, apiKey, baseURL, model, onCh
       if (event.type === 'error') {
         throw new Error(event.error);
       }
-      if (event.type === 'chunk' && onChunk) {
-        onChunk(event.text);
-      }
       if (event.type === 'skills') {
-        skills = event.skills;
+        result = { skills: event.skills, heard: event.heard || '' };
       }
     }
   }
 
   // Stream ended cleanly — return whatever we collected
-  if (skills) return skills;
+  if (result?.skills) return result;
   throw new Error('Stream ended without returning skills. The LLM may have failed or the connection was lost.');
 }

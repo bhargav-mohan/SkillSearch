@@ -1,13 +1,15 @@
 import { useEffect, useRef } from 'react';
 
+function badgeLabel(type) {
+  return type === 'existing' ? 'Guide' : 'File';
+}
+
 export default function SkillList({ skills, selectedIndex, onSelect }) {
   const listRef = useRef(null);
 
-  // Keyboard navigation: arrow keys move selection, Enter/Space select
   useEffect(() => {
     function handleKey(e) {
       if (!['ArrowUp', 'ArrowDown'].includes(e.key)) return;
-      // Only handle if focus is inside the list
       if (!listRef.current?.contains(document.activeElement)) return;
       e.preventDefault();
       if (e.key === 'ArrowDown') onSelect(Math.min(selectedIndex + 1, skills.length - 1));
@@ -32,11 +34,11 @@ export default function SkillList({ skills, selectedIndex, onSelect }) {
           <div className="skill-item-header">
             <span className="skill-item-name">{skill.name}</span>
             <span className={`skill-badge skill-badge--${skill.type}`}>
-              {skill.type === 'existing' ? 'Existing' : 'Generated'}
+              {badgeLabel(skill.type)}
             </span>
           </div>
           <span className="skill-item-filename">
-            {skill.type === 'generated' ? skill.filename : skill.url}
+            {skill.type === 'generated' ? skill.filename : 'Open the existing guide'}
           </span>
         </li>
       ))}
